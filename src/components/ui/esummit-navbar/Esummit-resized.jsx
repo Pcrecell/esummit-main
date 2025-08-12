@@ -197,7 +197,7 @@ export const NavbarLogo = () => {
     return (
         <a href="/">
             <button className="flex items-center px-2 py-1">
-                <Image src={logo} alt="logo" width={100} height={100} />
+                <Image src={"https://ik.imagekit.io/fhervghik/E-Cell%20Website/E-Cell%20Logo.webp"} alt="logo" width={100} height={100} />
             </button>
         </a>
     )
