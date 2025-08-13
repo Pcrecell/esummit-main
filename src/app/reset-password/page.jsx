@@ -1,7 +1,7 @@
 // src/auth/ResetPassword.jsx
 "use client"
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { confirmPasswordReset } from 'firebase/auth';
 import { auth } from '@/lib/utils/firebase/firebase';
 import { useSearchParams } from 'next/navigation';
@@ -11,8 +11,8 @@ import Confetti from 'react-confetti';
 import { useWindowSize } from 'react-use';
 import AuthLayout from '@/components/esummit/auth/AuthLayout';
 
-
-function ResetPassword() {
+// Separate component that uses useSearchParams
+function ResetPasswordForm() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -91,7 +91,7 @@ function ResetPassword() {
   };
 
   return (
-    <AuthLayout hideGreenBox={true}>
+    <>
       {showConfetti && <Confetti width={width} height={height} recycle={false} numberOfPieces={300} />}
       <form
         onSubmit={handleResetPassword}
@@ -116,7 +116,7 @@ function ResetPassword() {
             required
           />
           <span
-            className="absolute right-1 top-[1.125rem] h-8 flex items-center justify-center px-2 cursor-pointer text-gray-400 hover:text-white" // Adjusted top and height for precise vertical centering
+            className="absolute right-1 top-[1.125rem] h-8 flex items-center justify-center px-2 cursor-pointer text-gray-400 hover:text-white"
             onClick={() => setShowPassword(!showPassword)}
             title={showPassword ? 'Hide password' : 'Show password'}
           >
@@ -169,6 +169,32 @@ function ResetPassword() {
           </Link>
         </div>
       </form>
+    </>
+  );
+}
+
+// Loading fallback component
+function ResetPasswordLoading() {
+  return (
+    <div className="rounded-2xl shadow-xl px-8 py-4 flex flex-col gap-2.5">
+      <div className="animate-pulse">
+        <div className="h-8 bg-gray-700 rounded mb-2"></div>
+        <div className="h-4 bg-gray-700 rounded mb-4"></div>
+        <div className="h-10 bg-gray-700 rounded mb-2"></div>
+        <div className="h-10 bg-gray-700 rounded mb-4"></div>
+        <div className="h-10 bg-gray-700 rounded"></div>
+      </div>
+    </div>
+  );
+}
+
+// Main component wrapped with Suspense
+function ResetPassword() {
+  return (
+    <AuthLayout hideGreenBox={true}>
+      <Suspense fallback={<ResetPasswordLoading />}>
+        <ResetPasswordForm />
+      </Suspense>
     </AuthLayout>
   );
 }
