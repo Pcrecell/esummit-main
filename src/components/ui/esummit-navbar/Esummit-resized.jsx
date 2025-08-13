@@ -2,8 +2,7 @@
 import { cn } from "../../../lib/utils/cn.js"
 import { IconMenu2, IconX } from "@tabler/icons-react"
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from "motion/react"
-import logo from "../../../../public/Images/esummit/navbar/logo.png"
-import cell from "../../../../public/images/esummit/navbar/ecell-logo.png"
+
 import React, { useRef, useState } from "react"
 import Image from "next/image.js"
 import { Skeleton } from '@mui/material';
@@ -62,7 +61,9 @@ export const NavBody = ({ leftItems = [], rightItems = [], children, className, 
                     />
                   )}
                   <Image
+
                     src={"https://ik.imagekit.io/ecellkiit/E-Cell%20Website/ecell-logo.png?updatedAt=1755075880401"}
+
                     alt="logo"
                     width={50}
                     height={50}
@@ -197,7 +198,9 @@ export const NavbarLogo = () => {
     return (
         <a href="/">
             <button className="flex items-center px-2 py-1">
+
                 <Image src={"https://ik.imagekit.io/ecellkiit/E-Cell%20Website/logo.png?updatedAt=1755075880371"} alt="logo" width={100} height={100} />
+
             </button>
         </a>
     )
