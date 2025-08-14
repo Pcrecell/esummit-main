@@ -5,10 +5,12 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
 import EventCard from "./EventCard";
+import { useRouter } from "next/navigation";
 import EventsCalendar from "./EventsCalendar";
 import EventsMap from "./EventsMap";
 import HeroSection from "./HeroSection";
 import MobileTabs from "./MobileTabs";
+import { authAPI } from "@/lib/services/api"; // make sure you have this
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
@@ -17,7 +19,7 @@ const EventsPage = () => {
   const leftSectionRef = useRef(null);
   const cardRefs = useRef([]);
   const mobileScrollRef = useRef(null);
-
+  const router = useRouter();
   const [selectedDate, setSelectedDate] = useState(22);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
 
@@ -33,17 +35,21 @@ const EventsPage = () => {
         title: "PANDORA'S PARADOX",
         time: "9:00AM - 4:30PM",
         venue: "CAMPUS-25",
+        coordinates: [20.36444610634588, 85.81695856641474],
         description:
           "Pandora's Paradox is a challenge where teams turn complex global problems into creative, ethical solutions.",
         image: "https://i.ibb.co/7xWdGYwv/hack-r.png",
+        route: "/pandoras-paradox",
       },
       {
         title: "EXPO",
         time: "11:00AM - 4:30PM",
         venue: "CAMPUS-06",
+        coordinates: [20.353523760924087, 85.8195440597536],
         description:
           "EXPO is a showcase where innovators present projects from tech to social impact, fostering connection, collaboration, and change.",
         image: "https://i.ibb.co/QFJHRt47/expo-l.png",
+        route: "/expo",
       },
     ],
     23: [
@@ -51,34 +57,41 @@ const EventsPage = () => {
         title: "ORACLE",
         time: "9:00AM - 3:00PM",
         venue: "CAMPUS-17",
+        coordinates: [20.34919541378971, 85.81945496655301],
         description:
           "ORACLE is a pitch event where participants present innovative, data-backed solutions to global challenges.",
         image: "https://i.ibb.co/gZQgcF5j/oracle-r.png",
+        route: "/oracle",
       },
       {
         title: "ALICE IN FOUNDERLAND",
         time: "9:00AM - 3:00PM",
         venue: "CAMPUS-05",
+        coordinates: [20.352904448394906, 85.81402616826391],
         description:
           "Alice in Founderland is an entrepreneurial challenge where players solve real-world problems with creativity and innovation to win.",
         image: "https://i.ibb.co/YFnnwgGP/aif-l.png",
+        route: "/aif",
       },
-
       {
         title: "EXPO",
         time: "9:00AM - 3:00PM",
         venue: "CAMPUS-06",
+        coordinates: [20.353523760924087, 85.8195440597536],
         description:
           "EXPO is a showcase where innovators present projects from tech to social impact, fostering connection, collaboration, and change.",
         image: "https://i.ibb.co/4Rky463J/expo-r.png",
+        route: "/expo",
       },
       {
         title: "PANDORA'S PARADOX",
         time: "9:00AM - 4:00PM",
         venue: "CAMPUS-25",
+        coordinates: [20.36444610634588, 85.81695856641474],
         description:
           "Pandora's Paradox is a challenge where teams turn complex global problems into creative, ethical solutions.",
         image: "https://i.ibb.co/twjYHtFw/hack-l.png",
+        route: "/pandoras-paradox",
       },
     ],
     24: [
@@ -86,17 +99,21 @@ const EventsPage = () => {
         title: "CASEX",
         time: "9:00AM - 3:00PM",
         venue: "CAMPUS-07",
+        coordinates: [20.350485952792063, 85.82069263354178],
         description:
           "Case Battle is a contest where teams solve real-world cases with innovative, practical solutions and defend them before judges.",
         image: "https://i.ibb.co/jPCnVcs0/casex-r.png",
+        route: "/case-x",
       },
       {
         title: "PANDORA'S PARADOX",
         time: "9:00AM - 3:00PM",
         venue: "CAMPUS-25",
+        coordinates: [20.36444610634588, 85.81695856641474],
         description:
           "Pandora's Paradox is a challenge where teams turn complex global problems into creative, ethical solutions.",
         image: "https://i.ibb.co/twjYHtFw/hack-l.png",
+        route: "/pandoras-paradox",
       },
     ],
   };
@@ -107,6 +124,7 @@ const EventsPage = () => {
   };
 
   const currentEvents = eventsByDate[selectedDate] || eventsByDate[21];
+  const currentEvent = currentEvents[currentCardIndex];
 
   useEffect(() => {
     const scrollContainer = mobileScrollRef.current;
@@ -165,6 +183,7 @@ const EventsPage = () => {
         start: "top top",
         end: `+=${window.innerHeight * totalCards}`,
         pin: true,
+        markers: false, //----------------------------------------
         scrub: 1,
         onUpdate: (self) => {
           const progress = self.progress;
@@ -277,13 +296,23 @@ const EventsPage = () => {
     cardRefs.current = cardRefs.current.slice(0, currentEvents.length);
   }, [currentEvents]);
 
+  const handleKnowMore = (route) => {
+    // Check login status before navigating
+    if (localStorage.getItem("login") === "true") {
+      if (route) router.push(route);
+    } else {
+      // Redirect to login page if not logged in
+      router.push("/login");
+    }
+  };
+
   return (
     <div className="min-h-screen overflow-hidden">
       <HeroSection />
       {/* Desktop Layout */}
       <div
         ref={desktopLayoutRef}
-        className="lg:h-[120vh] lg:flex hidden relative"
+        className="lg:h-[110vh] lg:flex hidden relative"
         style={{
           backgroundImage: `linear-gradient(to bottom, rgba(24, 28, 13, 1) 0%, rgba(24, 28, 13, 0.3) 70%, rgba(0, 0, 0, 1) 100%), url("https://ik.imagekit.io/fhervghik/E-Cell%20Website/Events_Image_Background_Desktop.png?updatedAt=1754584353201")`,
           backgroundSize: "100%",
@@ -304,17 +333,20 @@ const EventsPage = () => {
               <div
                 key={`${selectedDate}-${index}`}
                 ref={(el) => (cardRefs.current[index] = el)}
-                className="absolute w-full z-10"
+                className="absolute w-full max-w-4xl z-10"
                 style={{
-                  top: "20%",
-                  left: "55%",
+                  top: "30%",
+                  left: "50%",
                   transform: "translate(-50%, -50%)",
                 }}
               >
                 <EventCard left={index % 2 === 0} eventData={eventData} />
 
                 <div className="w-full flex justify-center mt-9 rounded-full">
-                  <button className="py-1 px-6 cursor-pointer hover:scale-110 transition-all duration-300 text-black bg-[#e3a57d] border-2 border-yellow-400 rounded-full">
+                  <button
+                    className="py-1 px-6 cursor-pointer hover:scale-110 transition-all duration-300 text-black bg-[#e3a57d] border-2 border-yellow-400 rounded-full"
+                    onClick={() => handleKnowMore(eventData.route)}
+                  >
                     Know More
                   </button>
                 </div>
@@ -324,7 +356,7 @@ const EventsPage = () => {
         </div>
 
         {/* Right Static Section */}
-        <div className="w-2/5 p-8 bg-none h-[60vh] my-auto scale-75 flex flex-col justify-center translate-y-3">
+        <div className="w-[35%] p-8 bg-none h-[60vh] scale-75 my-auto flex flex-col justify-center">
           <div className="translate-y-3">
             <h1 className="text-3xl font-cormorant-infant text-center text-[#f8d6a4] font-semibold">
               Events Calendar
@@ -342,7 +374,11 @@ const EventsPage = () => {
             <h1 className="text-3xl font-cormorant-infant text-center translate-y-5 text-[#f8d6a4] font-semibold">
               Map Of The Emerald Empire
             </h1>
-            <EventsMap />
+            <EventsMap
+              coordinates={currentEvent?.coordinates || [20.3534, 85.8195]}
+              label={currentEvent?.title || "Event Location"}
+              campus={currentEvent?.venue}
+            />
           </div>
         </div>
       </div>
@@ -413,7 +449,10 @@ const EventsPage = () => {
                   <div className="w-full max-w-sm mx-auto">
                     <EventCard left={index % 2 === 0} eventData={eventData} />
                     <div className="w-full flex justify-center mt-6 rounded-full">
-                      <button className="py-1 px-6 cursor-pointer hover:scale-110 transition-all duration-300 text-black bg-[#e3a57d] border-2 border-yellow-400 rounded-full">
+                      <button
+                        onClick={() => handleKnowMore(eventData.route)}
+                        className="py-1 px-6 cursor-pointer hover:scale-110 transition-all duration-300 text-black bg-[#e3a57d] border-2 border-yellow-400 rounded-full"
+                      >
                         Know More
                       </button>
                     </div>
@@ -451,7 +490,11 @@ const EventsPage = () => {
           <h1 className="text-2xl md:pb-0 pb-10 font-cormorant-infant text-center text-[#f8d6a4] font-semibold">
             MAP OF EMERALD EMPIRE
           </h1>
-          <EventsMap />
+          <EventsMap
+            coordinates={currentEvent?.coordinates || [20.3534, 85.8195]}
+            label={currentEvent?.title || "Event Location"}
+            campus={currentEvent?.venue}
+          />
         </div>
       </div>
     </div>
