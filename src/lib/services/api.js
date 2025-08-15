@@ -43,6 +43,7 @@ export const authAPI = {
       method: 'POST',
       credentials: 'include',
     });
+    localStorage.removeItem('login');
     return { success: true };
   },
 };
