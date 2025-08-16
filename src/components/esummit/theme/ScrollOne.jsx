@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useAuth } from "@/lib/context/AuthContext";
+import { useRouter } from "next/navigation";
 
 const images = [
     "https://ik.imagekit.io/kiitecell/Emerald_Desc.png",
@@ -32,6 +34,12 @@ const ScrollOne = () => {
     const [isDragging, setIsDragging] = useState(false);
     const [translateX, setTranslateX] = useState(0);
     const [isTransitioning, setIsTransitioning] = useState(false);
+
+
+     const [isAuthenticated, setIsAuthenticated] = useState(false);
+     const { userData, profile, loading } = useAuth();
+     const router = useRouter();
+
 
     useEffect(() => {
         currentRef.current = current;
@@ -167,23 +175,26 @@ const ScrollOne = () => {
                 </div>
                 
                 {/* Register button */}
-                <div className="w-full flex justify-center pt-2">
-                    <a
-                        href="#register"
-                        className="inline-block rounded-full font-bold transition-transform transform hover:scale-105 hover:shadow-xl"
-                        style={{
-                            padding: '12px 24px',
-                            fontSize: '16px',
-                            fontFamily: "Judson, serif",
-                            backgroundColor: "#20956E",
-                            color: "#FFFFFF",
-                            border: "2px solid #15A944",
-                            boxShadow: `0 8px 24px rgba(32, 149, 110, 0.4), 0 4px 12px rgba(32, 149, 110, 0.2)`,
-                        }}
-                    >
-                        Register Now
-                    </a>
-                </div>
+               {!userData && (
+  <div className="w-full flex justify-center pt-2">
+      <button
+          onClick={() => router.replace('/register')}
+          className="inline-block rounded-full font-bold transition-transform transform hover:scale-105 hover:shadow-xl"
+          style={{
+              padding: '12px 24px',
+              fontSize: '16px',
+              fontFamily: "Judson, serif",
+              backgroundColor: "#20956E",
+              color: "#FFFFFF",
+              border: "2px solid #15A944",
+              boxShadow: `0 8px 24px rgba(32, 149, 110, 0.4), 0 4px 12px rgba(32, 149, 110, 0.2)`,
+          }}
+      >
+          Register Now
+      </button>
+  </div>
+)}
+
             </div>
         );
     }
@@ -208,25 +219,28 @@ const ScrollOne = () => {
                     />
                 </div>
             </div>
-            <div className={`w-full flex justify-center pt-4`}>
-                <a
-                    href="/register"
-                    className="inline-block rounded-full font-bold transition-transform transform hover:scale-105 hover:shadow-xl"
-                    style={{
-                        padding: '18px 40px',
-                        fontSize: '20px',
-                        fontFamily: "Judson, serif",
-                        backgroundColor: "#20956E",
-                        color: "#FFFFFF",
-                        border: "2px solid #15A944",
-                        boxShadow: `0 8px 32px rgba(32, 149, 110, 0.7), 0 4px 16px rgba(32, 149, 110, 0.4)`,
-                        opacity: 1,
-                        fontWeight: 700,
-                    }}
-                >
-                    Register Now
-                </a>
-            </div>
+           {!userData && (
+  <div className="w-full flex justify-center pt-4">
+      <button
+          onClick={() => router.push("/register")}
+          className="inline-block rounded-full font-bold transition-transform transform hover:scale-105 hover:shadow-xl"
+          style={{
+              padding: '18px 40px',
+              fontSize: '20px',
+              fontFamily: "Judson, serif",
+              backgroundColor: "#20956E",
+              color: "#FFFFFF",
+              border: "2px solid #15A944",
+              boxShadow: `0 8px 32px rgba(32, 149, 110, 0.7), 0 4px 16px rgba(32, 149, 110, 0.4)`,
+              opacity: 1,
+              fontWeight: 700,
+          }}
+      >
+          Register Now
+      </button>
+  </div>
+)}
+
         </div>
     );
 };
