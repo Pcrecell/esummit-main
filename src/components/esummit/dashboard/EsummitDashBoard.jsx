@@ -66,7 +66,7 @@ const EsummitDashBoard = () => {
     };
 
     runEffect();
-  }, [userData]); // profile, loading, router, paymentDone, email, elixir these are dependencies for the useEffect hook to ensure it runs when any of these values change.
+  }, [userData,profile, loading, router, paymentDone, email, elixir]); // profile, loading, router, paymentDone, email, elixir these are dependencies for the useEffect hook to ensure it runs when any of these values change.
 
   if (loading) {
     return (
