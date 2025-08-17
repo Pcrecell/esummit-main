@@ -5,10 +5,12 @@ import Image from "next/image";
 import axios from "axios";
 import bgImage from "../../../../../public/images/hackathon/dashboard-bg.png";
 import { useAuth } from "@/lib/context/AuthContext";
+import { useRouter } from "next/navigation";
 
 const Dashboard = () => {
   const [action, setAction] = useState("idle");
   const [selectedTrack, setSelectedTrack] = useState("beginner");
+  const router = useRouter();
 
   const { userData, setUserData, profile, setProfile, loading} = useAuth();
 
