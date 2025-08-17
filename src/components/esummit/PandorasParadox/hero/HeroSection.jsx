@@ -5,13 +5,36 @@ import heroBg from "../../../../../public/images/hackathon/kiitecell-hero-bg.png
 import Image from "next/image";
 import heroRegisterButton from "../../../../../public/images/hackathon/hero-register-button.png";
 import { Poppins } from "next/font/google";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/context/AuthContext";
+import { useToast } from "@/hooks/useToast";
+import Toast from "@/components/ui/Toast";
 
 const poppins = Poppins({
   subsets: ["latin"],
   weight: ["400", "700"],
 });
 const HeroSection = () => {
+  const router = useRouter();
+  const { userData, profile } = useAuth();
+  const { toast, showSuccess, showError, hideToast } = useToast();
   const [deviceType, setDeviceType] = useState("desktop");
+  const paymentDone = profile?.payment;
+  // console.log("Payment status from profile:", paymentDone);
+  useEffect(() => {
+    if (!userData) {
+      router.replace("/login");
+    }
+  }, [userData, router]);
+  
+  const handleRegisterClick = () => {
+    if (!paymentDone) {
+      showError("Please complete your payment to register for the event.");
+      setTimeout(() => router.replace("/dashboard"), 2000);
+      return;
+    }
+    router.push("/pandoras-paradox/dashboard");
+  };
 
   useEffect(() => {
     // Guard against SSR: only access window on client
@@ -70,7 +93,7 @@ const HeroSection = () => {
 
         {/* Register Now Button */}
         <div className="w-full flex justify-center">
-          <a href="#register" className="inline-block group">
+          <button onClick={handleRegisterClick} type="button" className="inline-block group">
             {/* Outer glow that blooms on hover */}
             <div className="relative">
               <div className="absolute -inset-6 rounded-full bg-amber-300/0 blur-2xl transition duration-500 group-hover:bg-amber-300/25" />
@@ -91,9 +114,15 @@ const HeroSection = () => {
                 </div>
               </div>
             </div>
-          </a>
+          </button>
         </div>
       </div>
+      <Toast 
+        message={toast.message} 
+        type={toast.type} 
+        isVisible={toast.isVisible} 
+        onClose={hideToast} 
+      />
     </section>
   );
 };

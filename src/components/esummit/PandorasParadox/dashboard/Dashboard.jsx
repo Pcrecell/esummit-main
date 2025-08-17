@@ -1,27 +1,81 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import axios from "axios";
 import bgImage from "../../../../../public/images/hackathon/dashboard-bg.png";
 import { useAuth } from "@/lib/context/AuthContext";
 import { useRouter } from "next/navigation";
-
-const Dashboard = () => {
+import Toast from "@/components/ui/Toast";
+import { useToast } from "@/hooks/useToast";
+const PandorasParadoxDashboard = () => {
+  const router = useRouter();
+  const { userData, profile, loading } = useAuth();
+  const paymentDone = profile?.payment;
+  
+  // All useState hooks must be at the top
   const [action, setAction] = useState("idle");
   const [selectedTrack, setSelectedTrack] = useState("beginner");
-  const router = useRouter();
+  const [formData, setFormData] = useState({
+    name: "",
+    yourEid: "",
+    teamName: "",
+    teamId: ""
+  });
+  const [teamInfo, setTeamInfo] = useState({
+    teamName: "",
+    teamId: "",
+    track: "",
+    leaderId: "",
+    members: [],
+    role: "" // "leader" or "member"
+  });
+  const [newTeammateName, setNewTeammateName] = useState("");
+  const [newTeammateId, setNewTeammateId] = useState("");
+  const [isAddingMember, setIsAddingMember] = useState(false);
+  
+  const { toast, showSuccess, showError, hideToast } = useToast();
+  const fetchTeamInfo = async () => {
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/hackathon/team-info/${profile.elixir}`);
+    
+    if (!response.ok) {
+      throw new Error(`Error ${response.status}: ${response.statusText}`);
+    }
 
-  const { userData, setUserData, profile, setProfile, loading} = useAuth();
+    const data = await response.json();
+    setTeamInfo(data);
+  } catch (error) {
+    console.error("Error fetching team info:", error);
+    return;
+  }
+};
+
+useEffect(() => {
+  if (profile?.elixir) {
+    fetchTeamInfo();
+  }
+}, [profile]);
+
 
   useEffect(() => {
-      if (!loading) {
-        if (!userData) {
-          router.replace("/login");
-        }
+    if (!loading) {
+      if (!userData) {
+        router.replace("/login");
+        return;
       }
-  }, [userData, profile, loading, router]);
-  
+      if (!paymentDone) {
+        router.replace("/dashboard");
+        return;
+      }
+    }
+    if (userData && paymentDone) {
+      if (profile?.elixir) {
+    fetchTeamInfo();
+  }
+    }
+  }, [userData, paymentDone, loading, router]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-black to-green-900 text-white text-2xl font-bold tracking-widest animate-pulse">
@@ -30,178 +84,196 @@ const Dashboard = () => {
     );
   }
 
-  const [joinTeamData, setJoinTeamData] = useState({
-    yourName: "",
-    yourEid: "",
-    teamName: "",
-    teamId: "",
-  });
+  if (!userData || !paymentDone) {
+    return null;
+  }
+  const handleChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+// CREATE TEAM
+  const handleSubmitCreate = async () => {
+    // console.log("Creating team with data:", formData);
+    if (
+      !formData.name.trim() ||
+      !formData.yourEid.trim() ||
+      !formData.teamName.trim()
+    ) {
+      showError("Please fill out all fields to create a team.");
+      return;
+    }
+    try {
+      // console.log("Submitting create team request with data:", formData);
+const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/hackathon/hackathon_registration`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    name: formData.name.trim(),
+    elixir: formData.yourEid.trim(),
+    track: selectedTrack,
+    mode: "create_team",
+    teamName: formData.teamName.trim(),
+  }),
+});
 
-  const [createTeamData, setCreateTeamData] = useState({
-    yourName: "",
-    yourElixer: "",
-    teamName: "",
-  });
+const data = await res.json();
 
-  const [teammate1Name, setTeammate1Name] = useState("-");
-  const [teammate1Id, setTeammate1Id] = useState("");
-  const [teammate2Name, setTeammate2Name] = useState("-");
-  const [teammate2Id, setTeammate2Id] = useState("");
-  const [teammate3Name, setTeammate3Name] = useState("-");
-  const [teammate3Id, setTeammate3Id] = useState("");
-  const [teammate4Name, setTeammate4Name] = useState("-");
-  const [teammate4Id, setTeammate4Id] = useState("");
-  const [newTeammateName, setNewTeammateName] = useState("");
-  const [newTeammateId, setNewTeammateId] = useState("");
-  const [isAddingMember, setIsAddingMember] = useState(false);
+if (!res.ok) {
+  throw new Error(data.message || "Error creating team");
+}
 
-  const [teamInfo, setTeamInfo] = useState({
-    teamName: "Team",
-    teamId: "Random Team ID",
-    registered: false,
-  });
+showSuccess(`${data.message} Your Team ID: ${data.teamId}`);
 
-  const members = [
-    { name: teammate1Name, id: teammate1Id },
-    { name: teammate2Name, id: teammate2Id },
-    { name: teammate3Name, id: teammate3Id },
-    { name: teammate4Name, id: teammate4Id },
-  ];
+setTeamInfo({
+  teamName: formData.teamName.trim(),
+  teamId: data.teamId, // ✅ use data not res.data
+  track: selectedTrack,
+  leaderId: formData.yourEid.trim(),
+  role: "leader",
+  members: [{ name: formData.name.trim(), elixir: formData.yourEid.trim() }],
+});
+setAction("details");
+
+    } catch (err) {
+      console.error(err);
+      showError(`${err.response?.data?.message || "Error creating team"}`);
+    }
+  };
 
   const handleJoinTeamChange = (field, value) => {
-    setJoinTeamData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleCreateTeamChange = (field, value) => {
-    setCreateTeamData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleBackToInitial = () => {
     setAction("idle");
   };
 
-  const handleSubmitJoin = () => {
-    // Validation for joining a team
+  const handleSubmitJoin = async () => {
     if (
-      !joinTeamData.yourName.trim() ||
-      !joinTeamData.yourEid.trim() ||
-      !joinTeamData.teamName.trim() ||
-      !joinTeamData.teamId.trim()
+      !formData.name.trim() ||
+      !formData.yourEid.trim() ||
+      !formData.teamId.trim()
     ) {
-      alert("Please fill out all fields to join a team.");
-      return; // Stop execution if validation fails
+      showError("Please fill out all fields to join a team.");
+      return;
     }
+    try {
+      // console.log("Joining team with data:", formData);
+      
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/hackathon/hackathon_registration`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            name: formData.name.trim(),
+            elixir: formData.yourEid.trim(),
+            track: selectedTrack,
+            mode: "join_team",
+            teamId: formData.teamId.trim()
+          })
+            });
 
-    setTeamInfo((prev) => ({
-      ...prev,
-      teamName: joinTeamData.teamName || prev.teamName,
-      teamId: joinTeamData.teamId || prev.teamId,
-      registered: false,
-    }));
+          const data = await res.json();
 
-    // if (joinTeamData.yourName && joinTeamData.yourEid) {
-    //   setTeammate1Name(joinTeamData.yourName);
-    //   setTeammate1Id(joinTeamData.yourEid);
-    // }
+          if (!res.ok) {
+            throw new Error(data.message || "Error joining team");
+          }
 
-    setAction("details");
-  };
+          showSuccess(`${data.message} Joined Team ID: ${data.teamId}`);
 
-  const handleSubmitCreate = () => {
-    // Validation for creating a team
-    if (
-      !createTeamData.yourName.trim() ||
-      !createTeamData.yourElixer.trim() ||
-      !createTeamData.teamName.trim()
-    ) {
-      alert("Please fill out all fields to create a team.");
-      return; // Stop execution if validation fails
+        setTeamInfo(prev => ({
+        ...prev,
+        teamId: res.data.teamId,
+        track: selectedTrack,
+        role: "member"
+      }));
+      setAction("details");
+    } catch (err) {
+      console.error(err);
+      showError(`${err.response?.data?.message || "Error joining team"}`);
     }
-
-    setTeamInfo((prev) => ({
-      ...prev,
-      teamName: createTeamData.teamName || prev.teamName,
-      teamId: prev.teamId,
-      registered: false,
-    }));
-
-    // Don't automatically add the team creator as a teammate
-    // The teammates list will remain empty initially
-
-    setAction("details");
   };
 
   const handleAddMemberButton = async () => {
     if (!newTeammateName.trim() || !newTeammateId.trim()) {
-      alert("Please fill in both name and ID fields");
-      return;
-    }
-
-    // Check if team is full
-    const filledSlots = members.filter((member) => member.name !== "-").length;
-    if (filledSlots >= 4) {
-      alert("Team is full! Maximum 4 members allowed.");
+      showError("Please fill in both name and ID fields");
       return;
     }
 
     setIsAddingMember(true);
 
     try {
-      // Prepare data for API call
-      const memberData = {
+      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/hackathon/add-member`, {
+        leaderelixir: profile.elixir,
         name: newTeammateName.trim(),
-        elixirId: newTeammateId.trim(),
-        teamName: teamInfo.teamName,
-        teamId: teamInfo.teamId,
-      };
-
-      // Make API call
-      const response = await axios.post("/users/add-member", memberData, {
-        headers: {
-          "Content-Type": "application/json",
-        },
+        elixir: newTeammateId.trim()
       });
 
+      showSuccess(`${res.data.message}`);
 
-      // Find the first empty slot and add the new teammate
-      if (teammate1Name === "-") {
-        setTeammate1Name(newTeammateName);
-        setTeammate1Id(newTeammateId);
-      } else if (teammate2Name === "-") {
-        setTeammate2Name(newTeammateName);
-        setTeammate2Id(newTeammateId);
-      } else if (teammate3Name === "-") {
-        setTeammate3Name(newTeammateName);
-        setTeammate3Id(newTeammateId);
-      } else if (teammate4Name === "-") {
-        setTeammate4Name(newTeammateName);
-        setTeammate4Id(newTeammateId);
-      }
+      // Update frontend state
+      setTeamInfo(prev => ({
+        ...prev,
+        members: [...prev.members, { name: newTeammateName, elixir: newTeammateId }]
+      }));
 
-      // Clear the form fields
       setNewTeammateName("");
       setNewTeammateId("");
 
-      // Show success message (optional)
-      alert("Member added successfully!");
-    } catch (error) {
-      console.error("Error adding member:", error);
 
-      // Handle different types of errors
-      if (error.response) {
-        // Server responded with error status
-        alert(`Error: ${error.response.data.message || "Failed to add member"}`);
-      } else if (error.request) {
-        // Request was made but no response received
-        alert("Network error: Please check your connection and try again");
-      } else {
-        // Something else happened
-        alert("An unexpected error occurred. Please try again.");
-      }
+    } catch (error) {
+      // console.error("Error adding member:", error);
+      showError(`${error.response?.data?.message || "Error adding member"}`);
     } finally {
       setIsAddingMember(false);
     }
   };
+
+ 
+const handleRemoveMember = async (memberelixir) => {
+  if (memberelixir === profile.elixir) {
+    showError("Leader cannot remove themselves.");
+    return;
+  }
+
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/hackathon/remove-member`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        leaderelixir: profile.elixir,
+        memberelixir,
+      }),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.message || "Error removing member");
+    }
+
+    const data = await res.json();
+
+    showSuccess(`${data.message}`);
+
+    // Update frontend state
+    setTeamInfo((prev) => ({
+      ...prev,
+      members: prev.members.filter((m) => m.elixir !== memberelixir),
+    }));
+  } catch (error) {
+    console.error("Error removing member:", error);
+    showError(`${error.message}`);
+  }
+};
+
 
   return (
     <section
@@ -226,9 +298,11 @@ const Dashboard = () => {
 
       {/* Greeting (top-left) */}
       <div className="absolute top-16 sm:top-20 left-4 sm:left-6 md:left-20 z-20 select-none">
-        <div className="text-sm sm:text-base md:text-2xl font-mono text-white/90">Hey,</div>
+        <div className="text-sm sm:text-base md:text-2xl font-mono text-white/90">
+          Hey,
+        </div>
         <div className="text-xl sm:text-2xl md:text-4xl lg:text-6xl font-mono font-extrabold text-green-400 drop-shadow">
-          Saksham
+          {profile?.firstname || "Participant"}
         </div>
       </div>
 
@@ -262,8 +336,8 @@ const Dashboard = () => {
       <div
         className={`relative z-20 w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-2xl mx-auto flex flex-col items-center transition-all duration-700 ease-in-out ${
           action === "idle"
-            ? "mt-[50vh]"
-            : "mt-30 md:mt-24 sm:mt-32 xl:mt-40 pt-8 sm:pt-12"
+            ? "mt-32 sm:mt-40 md:mt-48"
+            : "mt-24 sm:mt-32 md:mt-40 pt-8 sm:pt-12"
         }`}
       >
         {/* Join / Create buttons */}
@@ -325,11 +399,11 @@ const Dashboard = () => {
                   </label>
                   <input
                     type="text"
-                    value={joinTeamData.yourName}
+                    value={formData.name}
                     onChange={(e) =>
-                      handleJoinTeamChange("yourName", e.target.value)
+                      handleJoinTeamChange("name", e.target.value)
                     }
-                    className="placeholder-gray-700 w-full bg-green-100/90 border-2 border-green-600/50 rounded-md px-3 py-2 text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-400/30 font-mono text-sm"
+                    className="w-full bg-green-100/90 border-2 border-green-600/50 rounded-md px-3 py-2 text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-400/30 font-mono text-sm"
                     placeholder="ENTER YOUR NAME"
                   />
                 </div>
@@ -339,11 +413,11 @@ const Dashboard = () => {
                   </label>
                   <input
                     type="text"
-                    value={joinTeamData.yourEid}
+                    value={formData.yourEid}
                     onChange={(e) =>
                       handleJoinTeamChange("yourEid", e.target.value)
                     }
-                    className="placeholder-gray-700 w-full bg-green-100/90 border-2 border-green-600/50 rounded-md px-3 py-2 text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-400/30 font-mono text-sm"
+                    className="w-full bg-green-100/90 border-2 border-green-600/50 rounded-md px-3 py-2 text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-400/30 font-mono text-sm"
                     placeholder="Enter UID"
                   />
                 </div>
@@ -353,11 +427,11 @@ const Dashboard = () => {
                   </label>
                   <input
                     type="text"
-                    value={joinTeamData.teamName}
+                    value={formData.teamName}
                     onChange={(e) =>
                       handleJoinTeamChange("teamName", e.target.value)
                     }
-                    className="placeholder-gray-700 w-full bg-green-100/90 border-2 border-green-600/50 rounded-md px-3 py-2 text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-400/30 font-mono text-sm"
+                    className="w-full bg-green-100/90 border-2 border-green-600/50 rounded-md px-3 py-2 text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-400/30 font-mono text-sm"
                     placeholder="Enter team name"
                   />
                 </div>
@@ -367,11 +441,11 @@ const Dashboard = () => {
                   </label>
                   <input
                     type="text"
-                    value={joinTeamData.teamId}
+                    value={formData.teamId}
                     onChange={(e) =>
                       handleJoinTeamChange("teamId", e.target.value)
                     }
-                    className="placeholder-gray-700 w-full bg-green-100/90 border-2 border-green-600/50 rounded-md px-3 py-2 text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-400/30 font-mono text-sm"
+                    className="w-full bg-green-100/90 border-2 border-green-600/50 rounded-md px-3 py-2 text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-400/30 font-mono text-sm"
                     placeholder="Enter Team ID"
                   />
                 </div>
@@ -414,11 +488,11 @@ const Dashboard = () => {
                   </label>
                   <input
                     type="text"
-                    value={createTeamData.yourName}
+                    value={formData.name}
                     onChange={(e) =>
-                      handleCreateTeamChange("yourName", e.target.value)
+                      handleCreateTeamChange("name", e.target.value)
                     }
-                    className="placeholder-gray-700 w-full bg-green-100/90 border-2 border-green-600/50 rounded-md px-3 py-2 text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-400/30 font-mono text-sm"
+                    className="w-full bg-green-100/90 border-2 border-green-600/50 rounded-md px-3 py-2 text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-400/30 font-mono text-sm"
                     placeholder="ENTER YOUR NAME"
                   />
                 </div>
@@ -428,11 +502,11 @@ const Dashboard = () => {
                   </label>
                   <input
                     type="text"
-                    value={createTeamData.yourElixer}
+                    value={formData.yourEid}
                     onChange={(e) =>
-                      handleCreateTeamChange("yourElixer", e.target.value)
+                      handleCreateTeamChange("yourEid", e.target.value)
                     }
-                    className="placeholder-gray-700 w-full bg-green-100/90 border-2 border-green-600/50 rounded-md px-3 py-2 text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-400/30 font-mono text-sm"
+                    className="w-full bg-green-100/90 border-2 border-green-600/50 rounded-md px-3 py-2 text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-400/30 font-mono text-sm"
                     placeholder="ENTER YOUR UID"
                   />
                 </div>
@@ -442,11 +516,11 @@ const Dashboard = () => {
                   </label>
                   <input
                     type="text"
-                    value={createTeamData.teamName}
+                    value={formData.teamName}
                     onChange={(e) =>
                       handleCreateTeamChange("teamName", e.target.value)
                     }
-                    className="placeholder-gray-700 w-full bg-green-100/90 border-2 border-green-600/50 rounded-md px-3 py-2 text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-400/30 font-mono text-sm"
+                    className="w-full bg-green-100/90 border-2 border-green-600/50 rounded-md px-3 py-2 text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-400/30 font-mono text-sm"
                     placeholder="ENTER TEAM NAME"
                   />
                 </div>
@@ -481,7 +555,7 @@ const Dashboard = () => {
                 </h3>
 
                 <div className="space-y-3">
-                  {members.map((member, idx) => (
+                  {teamInfo.members.map((member, idx) => (
                     <div
                       key={idx}
                       className="flex items-center justify-between text-white font-mono"
@@ -496,14 +570,24 @@ const Dashboard = () => {
                           </span>
                         )}
                       </div>
-                      <span className="text-white/60 text-sm">-</span>
+                      <div className="flex items-center gap-2">
+                        {member.name !== "-" && (
+                          <button
+                            onClick={() => handleRemoveMember(member.elixir)}
+                            className="bg-red-600/80 hover:bg-red-500 border border-red-400/60 text-white text-xs px-2 py-1 rounded font-mono font-bold transition-all"
+                          >
+                            REMOVE
+                          </button>
+                        )}
+                        <span className="text-white/60 text-sm">-</span>
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
             </div>
 
-            {/* Right side - Add teammate form */}
+            {/* rght me Add teammate */}
             <div className="lg:w-1/2">
               <div className="bg-black/40 border-2 border-green-400/60 rounded-lg p-6 backdrop-blur-md">
                 <div className="text-center mb-6">
@@ -511,7 +595,7 @@ const Dashboard = () => {
                     Add Members to your team
                   </h3>
                   <p className="text-white/80 font-mono text-sm mt-2">
-                    A minimum of 3 players are requied to register your team
+                    FILL UP THE DETAILS
                   </p>
                 </div>
 
@@ -524,7 +608,7 @@ const Dashboard = () => {
                       type="text"
                       value={newTeammateName}
                       onChange={(e) => setNewTeammateName(e.target.value)}
-                      className="placeholder-gray-700 w-full bg-green-100/90 border-2 border-green-600/50 rounded-md px-3 py-3 text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-400/30 font-mono text-sm"
+                      className="w-full bg-green-100/90 border-2 border-green-600/50 rounded-md px-3 py-3 text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-400/30 font-mono text-sm"
                       placeholder="ENTER TEAMMATE'S NAME"
                       disabled={isAddingMember}
                     />
@@ -538,7 +622,7 @@ const Dashboard = () => {
                       type="text"
                       value={newTeammateId}
                       onChange={(e) => setNewTeammateId(e.target.value)}
-                      className="placeholder-gray-700 w-full bg-green-100/90 border-2 border-green-600/50 rounded-md px-3 py-3 text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-400/30 font-mono text-sm"
+                      className="w-full bg-green-100/90 border-2 border-green-600/50 rounded-md px-3 py-3 text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-400/30 font-mono text-sm"
                       placeholder="ENTER YOUR TEAMMATE'S UID"
                       disabled={isAddingMember}
                     />
@@ -602,8 +686,8 @@ const Dashboard = () => {
               </button>
             </div>
             <p className="font-mono text-white text-xs sm:text-sm leading-relaxed">
-              Your team <span className="font-bold">{teamInfo.teamName}</span> is
-              successfully registered. Team ID:{" "}
+              Your team <span className="font-bold">{teamInfo.teamName}</span>{" "}
+              is successfully registered. Team ID:{" "}
               <span className="font-bold">{teamInfo.teamId}</span>
             </p>
           </div>
@@ -614,9 +698,11 @@ const Dashboard = () => {
       {action === "details" && (
         <div className="pt-8 left-1/2 transform  z-30">
           <button
-            disabled={members.filter(member => member.name !== "-").length < 2}
+            disabled={
+              members.filter((member) => member.name !== "-").length < 2
+            }
             className={`px-8 py-3 rounded-full font-mono font-bold text-lg transition-all duration-300 ${
-              members.filter(member => member.name !== "-").length >= 2
+              members.filter((member) => member.name !== "-").length >= 2
                 ? "bg-green-600/90 hover:bg-green-500 border-2 border-green-400/60 text-white shadow-lg hover:shadow-xl"
                 : "bg-gray-600/50 border-2 border-gray-500/50 text-gray-400 cursor-not-allowed"
             }`}
@@ -649,8 +735,10 @@ const Dashboard = () => {
           animation: matrixRain 3s infinite linear;
         }
       `}</style>
+      
+      {toast && <Toast />}
     </section>
   );
 };
 
-export default Dashboard;
+export default PandorasParadoxDashboard;

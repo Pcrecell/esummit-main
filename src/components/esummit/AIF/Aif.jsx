@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Cinzel_Decorative, Cinzel } from "next/font/google";
 import FlippableRounds from "./Rounds";
 import TimeVenue from "./TimeVenue";
@@ -8,6 +8,10 @@ import Rules from "./Rules";
 import About from "./About";
 import EventRegistration from "./EventRegistration";
 import RegistrationSuccess from "./RegistrationSuccess";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/context/AuthContext";
+import { useToast } from "@/hooks/useToast";
+import Toast from "@/components/ui/Toast";
 
 // Configure fonts
 const cinzelDecorative = Cinzel_Decorative({
@@ -29,10 +33,36 @@ export default function Aif() {
   const [isPaymentDone, setIsPaymentDone] = useState(false);
   const [showSuccessPage, setShowSuccessPage] = useState(false);
   const [registeredUserData, setRegisteredUserData] = useState(null);
+  const { userData, setUserData, profile, setProfile, loading} = useAuth();
+  const { toast, showSuccess, showError, hideToast } = useToast();
+  const router = useRouter();
+  const paymentDone = profile?.payment;
+
+    useEffect(() => {
+    if (!loading) {
+      if (!userData) {
+        router.replace("/login");
+      }
+    }
+  }, [userData, profile, loading, router]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-black to-green-900 text-white text-2xl font-bold tracking-widest animate-pulse">
+        Loading...
+      </div>
+    );
+   }
 
   const openRegistration = () => {
+    if (!paymentDone) {
+      showError("Please complete your payment to register for the event.");
+      setTimeout(() => router.replace("/dashboard"), 2000);
+      return;
+    }
+    
     setIsRegistrationPopupOpen(true);
-    setShowSuccessPage(false); // Reset success page when opening registration
+    setShowSuccessPage(false); 
   };
 
   const closeRegistration = () => {
@@ -163,6 +193,8 @@ export default function Aif() {
       <WhatsIt />
       <Rules />
 
+      {/* If profile?.payment == true then only open the popup or else redriect using route.push("/dashboard") */}
+
       {/* Registration Popup Modal */}
       {isRegistrationPopupOpen && (
         <div 
@@ -198,6 +230,13 @@ export default function Aif() {
           </div>
         </div>
       )}
+
+      <Toast 
+        message={toast.message} 
+        type={toast.type} 
+        isVisible={toast.isVisible} 
+        onClose={hideToast} 
+      />
     </div>
   );
 }

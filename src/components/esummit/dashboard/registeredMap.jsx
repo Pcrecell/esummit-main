@@ -115,19 +115,27 @@ const EventsMap = ({ coordinates = [20.3534, 85.8195], label = "Event Location" 
                 });
                 
                 L.marker(coordinates, { icon: pinpointIcon }).addTo(map)
-                    .bindPopup(`${label}<br>`, { offset: [0, -20] });
+                    .bindPopup(`<a href="https://www.google.com/maps/place/${coordinates[0]},${coordinates[1]}">${label}</a>`);
                     
             } catch (error) {
-                console.error("Error initializing map:", error);
+                // console.error("Error initializing map:", error);
             }
         };
         
-        // Check if script is already loaded
-        if (!document.getElementById("leaflet-script")) {
-            document.body.appendChild(leafletScript);
-        } else if (window.L) {
+        // Handle script loading
+        if (window.L) {
             // If Leaflet is already loaded, initialize immediately
             leafletScript.onload();
+        } else if (!document.getElementById("leaflet-script")) {
+            document.body.appendChild(leafletScript);
+        } else {
+            // Script exists but may not be loaded yet, attach to existing script
+            const existingScript = document.getElementById("leaflet-script");
+            if (existingScript.complete || window.L) {
+                leafletScript.onload();
+            } else {
+                existingScript.addEventListener('load', leafletScript.onload);
+            }
         }
 
         // Cleanup function
@@ -137,7 +145,7 @@ const EventsMap = ({ coordinates = [20.3534, 85.8195], label = "Event Location" 
                 try {
                     mapInstanceRef.current.remove();
                 } catch (error) {
-                    console.warn("Error removing map:", error);
+                    // console.warn("Error removing map:", error);
                 }
                 mapInstanceRef.current = null;
             }

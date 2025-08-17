@@ -1,7 +1,11 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Cormorant_Garamond } from "next/font/google";
+import { useAuth } from "@/lib/context/AuthContext";
+import Toast from "@/components/ui/Toast";
+import { useToast } from "@/hooks/useToast";
+
 
 const cormorantGaramond = Cormorant_Garamond({
   subsets: ["latin"],
@@ -10,32 +14,88 @@ const cormorantGaramond = Cormorant_Garamond({
 
 const JoinTeamPage = () => {
   const router = useRouter();
-  const [teamName, setTeamName] = useState("");
-  const [yourUId, setYourUId] = useState("");
-  const [teamLeadUId, setTeamLeadUId] = useState("");
-  const [teamId, setTeamId] = useState("");
+  const { showSuccess, showError } = useToast();
+
+  // ✅ align with pandoras logic -> use formData instead of multiple states
+  const [formData, setFormData] = useState({
+    teamName: "",
+    yourEid: "",
+    teamLeadEid: "",
+    teamId: "",
+  });
+
   const [errors, setErrors] = useState({});
+  const { userData, setUserData, profile, setProfile, loading} = useAuth();
+
+  useEffect(() => {
+    if (!loading) {
+      if (!userData) {
+        router.replace("/login");
+        return; // Exit early to prevent further checks
+      }
+      
+      if (!profile?.payment) {
+        router.replace("/dashboard");
+        return;
+      }
+    }
+  }, [userData, profile, loading, router]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-black to-green-900 text-white text-2xl font-bold tracking-widest animate-pulse">
+        Loading...
+      </div>
+    );
+   }
 
   const validateForm = () => {
     let newErrors = {};
-    if (!teamName.trim()) newErrors.teamName = "Team Name is required.";
-    if (!yourUId.trim()) newErrors.yourUId = "Your UID is required.";
-    if (!teamLeadUId.trim()) newErrors.teamLeadUId = "Lead UID is required.";
-    if (!teamId.trim()) newErrors.teamId = "Team ID is required.";
+    if (!formData.teamName.trim()) newErrors.teamName = "Team Name is required.";
+    if (!formData.yourEid.trim()) newErrors.yourEid = "Your UID is required.";
+    if (!formData.teamLeadEid.trim()) newErrors.teamLeadEid = "Lead UID is required.";
+    if (!formData.teamId.trim()) newErrors.teamId = "Team ID is required.";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  // ✅ aligned submit with fetch (pandoras style)
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
-    console.log("Joining team:", { 
-      teamName, 
-      yourElixirId, 
-      teamLeadElixirId, 
-      teamId 
-    });
-    router.push('/success'); 
+
+    // console.log("Joining team:", formData);
+
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/oracle/oracle_registration`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: formData.teamName.trim(), // using teamName as display name
+          elixir: formData.yourEid.trim(),
+          mode: "join_team",
+          teamId: formData.teamId.trim(),
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Error joining team");
+      }
+
+      showSuccess(`${data.message} Joined Team ID: ${data.teamId}`);
+      router.push("/success");
+    } catch (err) {
+      // console.error("Error joining team:", err);
+      showError(err.message);
+    }
+  };
+
+  const handleChange = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   return (
@@ -61,8 +121,8 @@ const JoinTeamPage = () => {
                 </label>
                 <input
                   type="text"
-                  value={teamName}
-                  onChange={(e) => setTeamName(e.target.value)}
+                  value={formData.teamName}
+                  onChange={(e) => handleChange("teamName", e.target.value)}
                   className="flex-1 md:px-2 md:py-1.5 bg-[#AA9762] rounded text-gray-800"
                 />
               </div>
@@ -76,8 +136,8 @@ const JoinTeamPage = () => {
                 </label>
                 <input
                   type="text"
-                  value={yourUId}
-                  onChange={(e) => setYourUId(e.target.value)}
+                  value={formData.yourEid}
+                  onChange={(e) => handleChange("yourEid", e.target.value)}
                   className="flex-1 md:px-2 md:py-1.5 bg-[#AA9762] rounded text-gray-800 "
                 />
               </div>
@@ -91,8 +151,8 @@ const JoinTeamPage = () => {
                 </label>
                 <input
                   type="text"
-                  value={teamLeadUId}
-                  onChange={(e) => setTeamLeadUId(e.target.value)}
+                  value={formData.teamLeadEid}
+                  onChange={(e) => handleChange("teamLeadEid", e.target.value)}
                   className="flex-1 md:px-2 md:py-1.5 bg-[#AA9762] rounded text-gray-800 "
                 />
               </div>
@@ -106,8 +166,8 @@ const JoinTeamPage = () => {
                 </label>
                 <input
                   type="text"
-                  value={teamId}
-                  onChange={(e) => setTeamId(e.target.value)}
+                  value={formData.teamId}
+                  onChange={(e) => handleChange("teamId", e.target.value)}
                   className="flex-1 md:px-2 md:py-1.5 bg-[#AA9762] rounded text-gray-800"
                 />
               </div>
@@ -134,6 +194,7 @@ const JoinTeamPage = () => {
           </form>
         </div>
       </div>
+      <Toast />
     </div>
   );
 };

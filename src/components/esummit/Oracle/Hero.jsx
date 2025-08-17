@@ -1,8 +1,12 @@
 "use client";
 import Image from "next/image";
 import { Cormorant_Garamond, Rakkas } from "next/font/google";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/context/AuthContext";
 import RegisterPopup from "./registerPopup";
+import Toast from "@/components/ui/Toast";
+import { useToast } from "@/hooks/useToast";
 import {
   MapPinIcon,
   CalendarIcon,
@@ -20,7 +24,54 @@ const rakkas = Rakkas({
 });
 
 export default function Hero() {
+  // ✅ hooks must be inside the component
+  const { userData, profile, loading } = useAuth();
+  const { toast, showSuccess, showError, hideToast } = useToast();
+  const router = useRouter();
+
+  const [teamInfo, setTeamInfo] = useState({
+    teamName: "",
+    teamId: "",
+    leaderId: "",
+    members: [],
+    role: "", // "leader" or "member"
+  });
   const [showPopup, setShowPopup] = useState(false);
+  const paymentDone = profile?.payment;
+
+  const handleRegister = () => {
+    if (!paymentDone) {
+      showError("Please complete your payment to register for the event.");
+      setTimeout(() => router.replace("/dashboard"), 2000);
+      return;
+    }
+    setShowPopup(true);
+  };
+  const fetchTeamInfo = async () => {
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/oracle/team-info/${profile.elixir}`
+      );
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      // console.log("Fetched team info:", data);
+      setTeamInfo(data);
+    } catch (error) {
+      console.error("Error fetching team info:", error);
+      //showError("Failed to load team information. Please try again later.");
+    }
+  };
+
+  useEffect(() => {
+    if (profile?.elixir) {
+      fetchTeamInfo();
+    }
+  }, [profile]);
+
 
   return (
     <div
@@ -65,29 +116,31 @@ export default function Hero() {
           </p>
 
           <div className="flex justify-center mt-12">
-  <div className="group relative w-48 sm:w-72 md:w-48 items-center cursor-pointer" onClick={() => setShowPopup(true)}>
-    {/* Image shown when not hovering */}
-    <img
-      src="https://i.postimg.cc/4xgHwDWF/KIITESUMMIT-POPUP-PAYButtoon.png"
-      alt="Pay Now"
-      className="w-full z-0 hidden group-hover:block"
-    />
+            <div
+              className="group relative w-48 sm:w-72 md:w-48 items-center cursor-pointer"
+              onClick={handleRegister}
+            >
+              {/* Image shown when not hovering */}
+              <img
+                src="https://i.postimg.cc/4xgHwDWF/KIITESUMMIT-POPUP-PAYButtoon.png"
+                alt="Pay Now"
+                className="w-full z-0 hidden group-hover:block"
+              />
 
-    {/* Image shown on hover */}
-    <img
-      src="https://i.postimg.cc/3x4chbmh/KIITESUMMIT-POPUP-PAYButtoon2.png"
-      alt="Pay Now Hover"
-      className="w-full z-0 group-hover:hidden"
-    />
+              {/* Image shown on hover */}
+              <img
+                src="https://i.postimg.cc/3x4chbmh/KIITESUMMIT-POPUP-PAYButtoon2.png"
+                alt="Pay Now Hover"
+                className="w-full z-0 group-hover:hidden"
+              />
 
-    <span
-      className={`absolute inset-0 z-10 flex items-center justify-center text-[#FFFF] font-semibold text-sm sm:text-base md:text-xl ${cormorantGaramond.className}`}
-    >
-      REGISTER NOW
-    </span>
-  </div>
-</div>
-
+              <span
+                className={`absolute inset-0 z-10 flex items-center justify-center text-[#FFFF] font-semibold text-sm sm:text-base md:text-xl ${cormorantGaramond.className}`}
+              >
+                REGISTER NOW
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* Darker black fading layer at the bottom */}
@@ -135,6 +188,7 @@ export default function Hero() {
 
       {/* Render Popup */}
       {showPopup && <RegisterPopup onClose={() => setShowPopup(false)} />}
+      <Toast message={toast.message} type={toast.type} isVisible={toast.isVisible} onClose={hideToast} />
     </div>
   );
 }

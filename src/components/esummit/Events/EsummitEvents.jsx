@@ -8,11 +8,21 @@ import EventsCalendar from "./EventsCalendar";
 import EventsMap from "./EventsMap";
 import HeroSection from "./HeroSection";
 import MobileTabs from "./MobileTabs";
+import { authAPI } from "@/lib/services/api"; // make sure you have this
 import { useAuth } from "@/lib/context/AuthContext";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useGSAP } from "@gsap/react";
+
+
+gsap.registerPlugin(useGSAP, ScrollTrigger);
 
 const EventsPage = () => {
   const desktopScrollRef = useRef(null);
   const mobileScrollRef = useRef(null);
+  const desktopLayoutRef = useRef(null);
+  const leftSectionRef = useRef(null);
+  const cardRefs = useRef([]);
   const router = useRouter();
   const [selectedDate, setSelectedDate] = useState(22);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
@@ -40,19 +50,19 @@ const EventsPage = () => {
       {
         title: "EXPO",
         time: "11:00AM - 4:30PM",
-        venue: "CAMPUS-06",
+        venue: "CAMPUS-06 BANQUET HALL",
         coordinates: [20.353523760924087, 85.8195440597536],
         description:
           "EXPO is a showcase where innovators present projects from tech to social impact, fostering connection, collaboration, and change.",
         image: "https://ik.imagekit.io/1bsukh3d7/expo-l.webp?updatedAt=1755242215588",
-        route: "/expo",
+        route: "/EXPO",
       },
     ],
     23: [
       {
         title: "ORACLE",
         time: "9:00AM - 3:00PM",
-        venue: "CAMPUS-17",
+        venue: "CAMPUS-6",
         coordinates: [20.34919541378971, 85.81945496655301],
         description:
           "ORACLE is a pitch event where participants present innovative, data-backed solutions to global challenges.",
@@ -62,17 +72,17 @@ const EventsPage = () => {
       {
         title: "ALICE IN FOUNDERLAND",
         time: "9:00AM - 3:00PM",
-        venue: "CAMPUS-05",
+        venue: "CAMPUS-17",
         coordinates: [20.352904448394906, 85.81402616826391],
         description:
           "Alice in Founderland is an entrepreneurial challenge where players solve real-world problems with creativity and innovation to win.",
         image: "https://ik.imagekit.io/1bsukh3d7/aif-l.webp?updatedAt=1755242215528",
-        route: "/AIF",
+        route: "/aif",
       },
       {
         title: "EXPO",
         time: "9:00AM - 3:00PM",
-        venue: "CAMPUS-06",
+        venue: "CAMPUS-06 BANQUET HALL",
         coordinates: [20.353523760924087, 85.8195440597536],
         description:
           "EXPO is a showcase where innovators present projects from tech to social impact, fostering connection, collaboration, and change.",
@@ -93,9 +103,9 @@ const EventsPage = () => {
     24: [
       {
         title: "CASEX",
-        time: "9:00AM - 3:00PM",
-        venue: "CAMPUS-07",
-        coordinates: [20.350485952792063, 85.82069263354178],
+        time: "10:00AM - 4:00PM",
+        venue: "CAMPUS-17",
+        coordinates: [20.34919541378971, 85.81945496655301],
         description:
           "Case Battle is a contest where teams solve real-world cases with innovative, practical solutions and defend them before judges.",
         image: "https://ik.imagekit.io/1bsukh3d7/casex-r.webp?updatedAt=1755242215640",
@@ -195,6 +205,163 @@ const EventsPage = () => {
   if (desktopScrollRef.current) desktopScrollRef.current.scrollTo({ top: 0 });
     if (mobileScrollRef.current) mobileScrollRef.current.scrollTo({ left: 0 });
   }, [selectedDate]);
+
+  useGSAP(() => {
+    const mm = gsap.matchMedia();
+
+    mm.add("(min-width: 1024px)", () => {
+      if (
+        !desktopLayoutRef.current ||
+        !leftSectionRef.current ||
+        cardRefs.current.length === 0
+      )
+        return;
+
+      ScrollTrigger.getAll().forEach((trigger) => trigger.kill());
+
+      const cards = cardRefs.current.filter((card) => card !== null);
+      const totalCards = cards.length;
+
+      cards.forEach((card, index) => {
+        if (index === 0) {
+          gsap.set(card, {
+            y: "0vh",
+            opacity: 1,
+          });
+        } else {
+          gsap.set(card, {
+            y: "100vh",
+            opacity: 0,
+          });
+        }
+      });
+
+      const pinTrigger = ScrollTrigger.create({
+        trigger: desktopLayoutRef.current,
+        start: "top top",
+        end: `+=${window.innerHeight * totalCards}`,
+        pin: true,
+        markers: false, //----------------------------------------
+        scrub: 1,
+        onUpdate: (self) => {
+          const progress = self.progress;
+          const cardProgress = progress * totalCards;
+
+          cards.forEach((card, index) => {
+            // Card 0: 0-1, Card 1: 1-2, Card 2: 2-3, etc.
+            const cardStart = index;
+            const cardEnd = index + 1;
+
+            if (index === 0) {
+              if (cardProgress <= 1) {
+                if (cardProgress <= 0.8) {
+                  gsap.set(card, {
+                    y: "0vh",
+                    opacity: 1,
+                  });
+                } else {
+                  const outProgress = (cardProgress - 0.8) / 0.2;
+                  gsap.set(card, {
+                    y: gsap.utils.interpolate("0vh", "-100vh", outProgress),
+                    opacity: gsap.utils.interpolate(1, 0, outProgress),
+                  });
+                }
+              } else {
+                gsap.set(card, {
+                  y: "-100vh",
+                  opacity: 0,
+                });
+              }
+            } else {
+              if (cardProgress >= cardStart && cardProgress <= cardEnd) {
+                if (index === totalCards - 1) {
+                  // Last card: comes in and stays
+                  if (cardProgress <= cardStart + 0.2) {
+                    const inProgress = (cardProgress - cardStart) / 0.2;
+                    gsap.set(card, {
+                      y: gsap.utils.interpolate("100vh", "0vh", inProgress),
+                      opacity: gsap.utils.interpolate(0, 1, inProgress),
+                    });
+                  } else {
+                    gsap.set(card, {
+                      y: "0vh",
+                      opacity: 1,
+                    });
+                  }
+                } else {
+                  // Middle cards: come in, stay, then go out
+                  if (cardProgress <= cardStart + 0.2) {
+                    const inProgress = (cardProgress - cardStart) / 0.2;
+                    gsap.set(card, {
+                      y: gsap.utils.interpolate("100vh", "0vh", inProgress),
+                      opacity: gsap.utils.interpolate(0, 1, inProgress),
+                    });
+                  } else if (cardProgress <= cardStart + 0.8) {
+                    gsap.set(card, {
+                      y: "0vh",
+                      opacity: 1,
+                    });
+                  } else {
+                    const outProgress = (cardProgress - cardStart - 0.8) / 0.2;
+                    gsap.set(card, {
+                      y: gsap.utils.interpolate("0vh", "-100vh", outProgress),
+                      opacity: gsap.utils.interpolate(1, 0, outProgress),
+                    });
+                  }
+                }
+              } else if (cardProgress < cardStart) {
+                gsap.set(card, {
+                  y: "100vh",
+                  opacity: 0,
+                });
+              } else if (cardProgress > cardEnd) {
+                if (index === totalCards - 1) {
+                  gsap.set(card, {
+                    y: "0vh",
+                    opacity: 1,
+                  });
+                } else {
+                  gsap.set(card, {
+                    y: "-100vh",
+                    opacity: 0,
+                  });
+                }
+              }
+            }
+          });
+        },
+        onComplete: () => {
+          if (cards[totalCards - 1]) {
+            gsap.set(cards[totalCards - 1], {
+              y: "0vh",
+              opacity: 1,
+            });
+          }
+        },
+      });
+
+      return () => {
+        pinTrigger.kill();
+      };
+    });
+
+    return () => {
+      ScrollTrigger.getAll().forEach((trigger) => trigger.kill());
+    };
+  }, [currentEvents, selectedDate]);
+
+  useEffect(() => {
+    cardRefs.current = cardRefs.current.slice(0, currentEvents.length);
+  }, [currentEvents]);
+
+  // const handleKnowMore = (route) => {
+  //   // Check login status before navigating
+  //     if (route && userData) router.push(route);
+  //    else {
+  //     // Redirect to login page if not logged in
+  //     router.push("/login");
+  //   }
+  // };
 
   return (
     <div className="w-full">
